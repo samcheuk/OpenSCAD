@@ -1,0 +1,50 @@
+---
+description: OpenSCAD parametric custom 3D model conventions
+alwaysApply: true
+---
+
+# OpenSCAD custom 3D models
+
+This repo is parametric OpenSCAD. A `.scad` file is the model: the script is compiled into a solid, not edited as a mesh. Follow the [OpenSCAD User Manual](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual) and the [Language Reference](https://en.wikibooks.org/wiki/OpenSCAD_User_Manual/The_OpenSCAD_Language).
+
+## Parameters
+
+- Write comments, Customizer section names, parameter captions, and `assert()` messages in English.
+- OpenSCAD is unitless. Put a header comment that names the unit. Default is millimetres unless that file says otherwise.
+- Assign Customizer parameters at top level, before the first `module` or `function`. Group them with `/* [Section] */`. Hide internals with `/* [Hidden] */`.
+- No magic numbers in geometry. Name every dimension. Validate ranges with `assert()`.
+
+## Geometry
+
+- Build solids with CSG (`union`, `difference`, `intersection`) and extrusion (`linear_extrude`, `rotate_extrude`) of 2D primitives.
+- `module` for reusable parts; `function` for pure calculations. Operator modules take `children()`.
+- In `difference()`, the first child is kept and the rest are subtracted. Overlap every cut by a small epsilon so faces are not coincident (CGAL fails or preview flickers on shared faces).
+- Curve resolution comes from `$fa` / `$fs`, or one `fn` parameter passed into circles and spheres. Do not set a large global `$fn`.
+- Avoid `minkowski()` and `hull()` on already-complex solids; they dominate render time.
+
+## Preview, render, export
+
+- F5 Preview (OpenCSG) is an approximation. F6 Render (CGAL) is the exact mesh. Export STL, 3MF, OFF, or AMF only after a successful F6.
+- Remove debug modifiers (`#`, `%`, `*`, `!`) from any file that is meant to be rendered or exported.
+
+## Libraries
+
+- `use <file.scad>` imports modules and functions only. `include <file.scad>` also copies variables into the caller. Prefer `use` for shared libraries.
+- A part file must preview on its own. Do not `include` a script that already emits geometry.
+
+```scad
+// ❌ BAD — unnamed size, coincident cut, debug modifier left in
+difference() {
+  cube([20, 20, 10]);
+  #cube([10, 20, 10]);
+}
+
+// ✅ GOOD — named wall, cut overlaps the kept solid
+wall = 2;
+eps = 0.01;
+difference() {
+  cube([20, 20, 10]);
+  translate([wall, -eps, wall])
+    cube([20 - 2 * wall, 10 + 2 * eps, 10]);
+}
+```
